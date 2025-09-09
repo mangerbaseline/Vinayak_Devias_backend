@@ -1,11 +1,14 @@
 const User = require('../models/userModel');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+const OTP = require('../models/otpModel');
+
 
 // Get all users
 const getUsers = async (req, res) => {
   try {
-    const users = await User.find().select('-password'); // Exclude password
+    const users = await User.find().select('-password'); 
     res.status(200).json(users);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -142,13 +145,146 @@ const updatePassword = async (req, res) => {
   }
 };
 
+// Send OTP
+// const sendOTP = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+
+//     if (!email) {
+//       return res.status(400).json({ message: 'Email is required' });
+//     }
+
+//     const user = await User.findOne({ email });
+//     if (!user) {
+//       return res.status(404).json({ message: 'User not found' });
+//     }
+
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+//     await OTP.create({ email, otp });
+
+//     const transporter = nodemailer.createTransport({
+//       service: 'Gmail',
+//       auth: {
+//         user: process.env.EMAIL_USER,
+//         pass: process.env.EMAIL_PASS,
+//       },
+//     });
+
+//     await transporter.sendMail({
+//       from: process.env.EMAIL_USER,
+//       to: email,
+//       subject: 'Password Reset OTP',
+//       text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+//     });
+
+//     res.status(200).json({ message: 'OTP sent successfully' });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+const sendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    await OTP.create({ email, otp });
+
+    const transporter = nodemailer.createTransport({
+      service: 'Gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Password Reset OTP',
+      text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
+    }, (error, info) => {
+      if (error) {
+        console.error('Error sending email:', error);
+        return res.status(500).json({ message: 'Failed to send OTP email', error: error.message });
+      } else {
+        console.log('Email sent:', info.response);
+        return res.status(200).json({ message: 'OTP sent successfully' });
+      }
+    });
+
+  } catch (err) {
+    console.error('Server error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+// Verify OTP
+const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const record = await OTP.findOne({ email, otp });
+
+    if (!record) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    record.verified = true;
+    await record.save();
+
+    res.status(200).json({ message: 'OTP verified successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Reset Password
+const resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+
+    const otpRecord = await OTP.findOne({ email, verified: true });
+
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'OTP not verified' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await User.findOneAndUpdate({ email }, { password: hashedPassword });
+
+    await OTP.deleteMany({ email }); 
+
+    res.status(200).json({ message: 'Password reset successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
+
 module.exports = {
   getUsers,
   createUser,
   loginUser,
   updateUser,
   deleteUser,
-  updatePassword
+  updatePassword,
+  sendOTP,
+  verifyOTP,
+  resetPassword
 };
 
 

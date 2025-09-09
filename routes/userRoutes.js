@@ -38,18 +38,26 @@ const {
   updateUser,
   deleteUser,
   updatePassword,
-  loginUser
+  loginUser,
+  sendOTP,
+  verifyOTP,
+  resetPassword
 } = require('../controllers/userController');
 
 // Public Routes
 router.post('/register', createUser);
 router.post('/login', loginUser);
 
-// Public access — no auth required
+
 router.get('/', getUsers);
-router.put('/:id', updateUser);       // no auth
-router.delete('/:id', deleteUser);    // no auth
-router.put('/update-password', updatePassword); // as needed
+router.put('/:id', updateUser);      
+router.delete('/:id', deleteUser);    
+router.put('/update-password', updatePassword); 
+
+
+router.post('/send-otp', sendOTP);
+router.post('/verify-otp', verifyOTP);
+router.post('/reset-password', resetPassword);
 
 module.exports = router;
 
