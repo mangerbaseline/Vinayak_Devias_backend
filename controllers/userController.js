@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const OTP = require('../models/otpModel');
+const path = require('path')
 
 
 // Get all users
@@ -145,44 +146,7 @@ const updatePassword = async (req, res) => {
   }
 };
 
-// Send OTP
-// const sendOTP = async (req, res) => {
-//   try {
-//     const { email } = req.body;
-
-//     if (!email) {
-//       return res.status(400).json({ message: 'Email is required' });
-//     }
-
-//     const user = await User.findOne({ email });
-//     if (!user) {
-//       return res.status(404).json({ message: 'User not found' });
-//     }
-
-//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-//     await OTP.create({ email, otp });
-
-//     const transporter = nodemailer.createTransport({
-//       service: 'Gmail',
-//       auth: {
-//         user: process.env.EMAIL_USER,
-//         pass: process.env.EMAIL_PASS,
-//       },
-//     });
-
-//     await transporter.sendMail({
-//       from: process.env.EMAIL_USER,
-//       to: email,
-//       subject: 'Password Reset OTP',
-//       text: `Your OTP is ${otp}. It will expire in 5 minutes.`,
-//     });
-
-//     res.status(200).json({ message: 'OTP sent successfully' });
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
+//send otp
 
 const sendOTP = async (req, res) => {
   try {
@@ -272,8 +236,24 @@ const resetPassword = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+//
 
+// upload photo 
+const uploadAvatar = (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
 
+    // Build accessible URL for frontend
+    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+
+    
+    return res.status(200).json({ success: true, imageUrl });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
 
 module.exports = {
   getUsers,
@@ -284,7 +264,8 @@ module.exports = {
   updatePassword,
   sendOTP,
   verifyOTP,
-  resetPassword
+  resetPassword,
+  uploadAvatar
 };
 
 
