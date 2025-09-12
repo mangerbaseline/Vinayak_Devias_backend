@@ -1,5 +1,45 @@
-const jwt = require('jsonwebtoken');
 
+
+// const jwt = require('jsonwebtoken');
+
+// function auth(req, res, next) {
+//   const authHeader = req.headers.authorization || req.headers.Authorization;
+
+//   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+//     return res.status(401).json({ message: 'No token provided, authorization denied' });
+//   }
+
+//   const token = authHeader.split(' ')[1]; 
+
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+//     req.user = decoded; 
+//     next();
+//   } catch (err) {
+//     console.error('JWT verification failed:', err.message);
+    
+//     if (err.name === 'TokenExpiredError') {
+//       return res.status(401).json({ message: 'Token expired' });
+//     }
+    
+//     res.status(401).json({ message: 'Token is not valid' });
+//   }
+// }
+
+// function isAdmin(req, res, next) {
+//   if (req.user && req.user.role === 'admin') {
+//     next();
+//   } else {
+//     res.status(403).json({ message: 'Access denied: Admins only' });
+//   }
+// }
+
+// module.exports = {
+//   auth,
+//   isAdmin
+// };
+
+const jwt = require('jsonwebtoken');
 
 function auth(req, res, next) {
   const authHeader = req.headers.authorization || req.headers.Authorization;
@@ -11,18 +51,23 @@ function auth(req, res, next) {
   const token = authHeader.split(' ')[1]; 
 
   try {
-    // Verify token 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    
-    req.user = decoded;
-
-    
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+    console.log('🔐 Decoded JWT payload:', decoded);
+    req.user = decoded; 
     next();
   } catch (err) {
     console.error('JWT verification failed:', err.message);
+    
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    
     res.status(401).json({ message: 'Token is not valid' });
   }
 }
 
-module.exports = auth;
+
+
+module.exports = {
+  auth,
+};

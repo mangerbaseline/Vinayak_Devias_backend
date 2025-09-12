@@ -16,11 +16,14 @@ const getUsers = async (req, res) => {
   }
 };
 
+//create user 
+
 
 const createUser = async (req, res) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
-    const role = 'user'; // default role
+    const { firstName, lastName, email, password, role } = req.body;
+
+    const userRole = role || 'user';
 
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({ message: 'First name, last name, email, and password are required' });
@@ -34,7 +37,7 @@ const createUser = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ name, email, password: hashedPassword, role });
+    const newUser = new User({ name, email, password: hashedPassword, role: userRole });
     await newUser.save();
 
     res.status(201).json({ message: 'User registered successfully' });
@@ -43,8 +46,56 @@ const createUser = async (req, res) => {
   }
 };
 
+//create by admin
 
-// Login user
+
+const createUserByAdmin = async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    console.log("mmmmm");
+
+    if (!name || !email || !role) {
+      return res.status(400).json({ message: 'Name, email, and role are required' });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ message: 'User with this email already exists' });
+    }
+
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      role,
+    });
+
+    console.log("xxxx");
+
+    const savedUser = await newUser.save();
+
+    const userResponse = {
+      id: savedUser._id,
+      name: savedUser.name,
+      email: savedUser.email,
+      role: savedUser.role,
+      createdAt: savedUser.createdAt,
+    };
+
+    console.log("Yyyyy");
+
+    res.status(201).json({ message: 'User created successfully', user: userResponse });
+  } catch (error) {
+    console.error('Error in createUserByAdmin:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 const loginUser = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -58,12 +109,34 @@ const loginUser = async (req, res) => {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
+    // DEBUG: Check user object from database
+    console.log('User from DB:', user);
+    console.log('User role from DB:', user.role);
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid email or password' });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    // Ensure role is properly set (handle cases where role might be undefined)
+    const userRole = user.role || 'user'; // Default to 'user' if role is undefined
+    
+    // DEBUG: Check what's going into JWT
+    const jwtPayload = { 
+      id: user._id, 
+      role: userRole 
+    };
+    console.log('JWT payload:', jwtPayload);
+
+    const token = jwt.sign(
+      jwtPayload,
+      process.env.JWT_SECRET || 'your_jwt_secret', // Fallback secret
+      { expiresIn: '3d' }
+    );
+
+    // DEBUG: Verify the token contains role
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+    console.log('Decoded JWT after generation:', decoded);
 
     res.status(200).json({
       token,
@@ -71,10 +144,11 @@ const loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: userRole
       }
     });
   } catch (err) {
+    console.error('Login error:', err);
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -258,6 +332,7 @@ const uploadAvatar = (req, res) => {
 module.exports = {
   getUsers,
   createUser,
+  createUserByAdmin,
   loginUser,
   updateUser,
   deleteUser,
