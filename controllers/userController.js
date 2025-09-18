@@ -392,7 +392,7 @@
 
 
 const User = require('../models/userModel');
-const Summary = require('../models/summaryModel'); // Import Summary Model
+const Summary = require('../models/summaryModel'); 
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
@@ -401,31 +401,53 @@ const path = require('path');
 
 // ===================== Summary APIs =====================
 
+
+
+
 //  Create a new summary
+
+
 const createSummary = async (req, res) => {
-  const { summary } = req.body;
+  const { summary } = req.body;  
+  const userId = req.user.id;  
 
   if (!summary) {
-    return res.status(400).json({ message: 'summary is required' });
+    return res.status(400).json({ message: 'Summary is required' });
   }
 
   try {
-    const summary = await Summary.create({ summary });
-    res.status(201).json(summary);
+    const newSummary = await Summary.create({ summary, user: userId });
+    res.status(201).json(newSummary);
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    console.error(err);
+    res.status(500).json({ message: err.message });
   }
 };
 
-//  Get all summaries
-const getSummaries = async (req, res) => {
+
+
+const getUserSummary = async (req, res) => {
   try {
-    const summaries = await Summary.find().sort({ createdAt: -1 });
+    const requestedUserId = req.params.userId;
+    const loggedInUser = req.user; 
+
+   
+    if (loggedInUser.role !== 'admin' && loggedInUser.id !== requestedUserId) {
+      return res.status(403).json({ message: 'Access denied: Not authorized' });
+    }
+
+    const summaries = await Summary.find({ user: requestedUserId });
+
+    if (!summaries || summaries.length === 0) {
+      return res.status(404).json({ message: 'Summary not found' });
+    }
+
     res.status(200).json(summaries);
-  } catch (err) {
+  } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
 
 // ===================== User APIs =====================
 
@@ -703,7 +725,24 @@ const uploadAvatar = (req, res) => {
   }
 };
 
-// ===================== Exports =====================
+// multiple image can u
+const uploadMultipleImages = (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No files uploaded' });
+    }
+
+    const imageUrls = req.files.map(file => {
+      return `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+    });
+
+    return res.status(200).json({ success: true, imageUrls });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+
 module.exports = {
   getUsers,
   createUser,
@@ -717,8 +756,7 @@ module.exports = {
   resetPassword,
   uploadAvatar,
   updateFirstName,
-
-  //  Summary APIs
   createSummary,
-  getSummaries,
+ getUserSummary,
+ uploadMultipleImages
 };

@@ -1,5 +1,3 @@
-
-
 // const jwt = require('jsonwebtoken');
 
 // function auth(req, res, next) {
@@ -13,6 +11,7 @@
 
 //   try {
 //     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
+//     console.log('🔐 Decoded JWT payload:', decoded);
 //     req.user = decoded; 
 //     next();
 //   } catch (err) {
@@ -26,18 +25,11 @@
 //   }
 // }
 
-// function isAdmin(req, res, next) {
-//   if (req.user && req.user.role === 'admin') {
-//     next();
-//   } else {
-//     res.status(403).json({ message: 'Access denied: Admins only' });
-//   }
-// }
-
 // module.exports = {
 //   auth,
-//   isAdmin
 // };
+
+
 
 const jwt = require('jsonwebtoken');
 
@@ -59,14 +51,12 @@ function auth(req, res, next) {
     console.error('JWT verification failed:', err.message);
     
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expired' });
+      return res.status(401).json({ message: 'Token expired'});
     }
     
     res.status(401).json({ message: 'Token is not valid' });
   }
 }
-
-
 
 module.exports = {
   auth,
